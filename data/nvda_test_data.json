@@ -1,0 +1,33 @@
+{
+  "symbol": "NVDA",
+  "previous_day": {
+    "high": 165.49,
+    "low": 162.02,
+    "close": 163.87,
+    "change": 3.47
+  },
+  "current_day": {
+    "high": 172.81,
+    "low": 169.91,
+    "current_price": 171.89,
+    "change": 2.90
+  },
+  "manual_break_points": {
+    "break_point": 171.67,
+    "max_pos_exp": 174.04,
+    "int_pos_exp": 172.85,
+    "int_neg_exp": 170.48,
+    "max_neg_exp": 169.29
+  },
+  "bollinger_bands": {
+    "premarket_bbt_1h": 174.54,
+    "premarket_bbb_1h": 160.82,
+    "market_close_bbt_1h": 166.74,
+    "market_close_bbb_1h": 161.84
+  },
+  "emas_1h": {
+    "ema20": 167.68,
+    "ema50": 164.25,
+    "ema200": 152.47
+  }
+}

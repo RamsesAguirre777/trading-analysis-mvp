@@ -1,0 +1,79 @@
+{
+  "analysis_timestamp": "2025-07-21T14:30:00.000Z",
+  "symbol": "NVDA",
+  "gap_analysis": {
+    "gap_size": 8.02,
+    "gap_direction": "up",
+    "gap_percentage": 4.9,
+    "fill_probability": 0.85,
+    "classification": "large"
+  },
+  "imbalance_analysis": {
+    "bbt_ratio": 1.047,
+    "bbb_ratio": 0.994,
+    "imbalance_direction": "bullish",
+    "strength": "moderate"
+  },
+  "trend_analysis": {
+    "short_term": "bullish",
+    "medium_term": "bullish",
+    "long_term": "bullish",
+    "trend_strength": 1.0
+  },
+  "alerts": {
+    "overbought_1m": true,
+    "overbought_5m": true,
+    "overbought_30m": true,
+    "overbought_1h": true,
+    "correction_level": "high"
+  },
+  "directional_targets": {
+    "bullish_target": 172.81,
+    "bearish_target": 169.91,
+    "first_target_prediction": "bearish"
+  },
+  "break_point_analysis": {
+    "break_point_distance": 0.22,
+    "nearest_resistance": 172.85,
+    "nearest_support": 171.67,
+    "probability_break_up": 0.85
+  },
+  "trading_signals": {
+    "primary_direction": "SHORT",
+    "confidence": 0.73,
+    "entry_levels": [171.50, 171.00],
+    "stop_loss": 173.00,
+    "take_profit": [169.91, 168.50],
+    "risk_reward": 0.8
+  },
+  "previous_day": {
+    "high": 165.49,
+    "low": 162.02,
+    "close": 163.87,
+    "change": 3.47
+  },
+  "current_day": {
+    "high": 172.81,
+    "low": 169.91,
+    "current_price": 171.89,
+    "change": 2.90
+  },
+  "manual_break_points": {
+    "break_point": 171.67,
+    "max_pos_exp": 174.04,
+    "int_pos_exp": 172.85,
+    "int_neg_exp": 170.48,
+    "max_neg_exp": 169.29
+  },
+  "bollinger_bands": {
+    "premarket_bbt_1h": 174.54,
+    "premarket_bbb_1h": 160.82,
+    "market_close_bbt_1h": 166.74,
+    "market_close_bbb_1h": 161.84
+  },
+  "emas_1h": {
+    "ema20": 167.68,
+    "ema50": 164.25,
+    "ema200": 152.47
+  }
+}

@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Dashboard - Algoritmo Maestro (Dynamic)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/1.4.0/chartjs-plugin-annotation.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #0a0a0a;
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s ease;
+        }
+        
+        body.light-theme {
+            background: #f0f0f0;
+            color: #000000;
+        }
+        
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            min-height: calc(100vh - 40px);
+        }
+        
+        .chart-container {
+            background: #1a1a1a;
+            border-radius: 10px;
+            padding: 20px;
+            border: 2px solid #333;
+            transition: all 0.3s ease;
+        }
+        
+        body.light-theme .chart-container {
+            background: #ffffff;
+            border-color: #ddd;
+            color: #000000;
+        }
+        
+        .data-panel {
+            background: #1a1a1a;
+            border-radius: 10px;
+            padding: 20px;
+            border: 2px solid #333;
+            overflow-y: auto;
+            transition: all 0.3s ease;
+        }
+        
+        body.light-theme .data-panel {
+            background: #ffffff;
+            border-color: #ddd;
+            color: #000000;
+        }
+        
+        .symbol-header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #2a2a2a;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        body.light-theme .symbol-header {
+            background: #e0e0e0;
+        }
+        
+        .symbol-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff00;
+            transition: all 0.3s ease;
+        }
+        
+        .current-price {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ffffff;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+        }
+        
+        body.light-theme .current-price {
+            color: #000000;
+        }
+        
+        .status-indicators {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+        
+        .connection-status {
+            color: #00ff00;
+        }
+        
+        .connection-status.offline {
+            color: #ff4444;
+        }
+        
+        .gap-analysis {
+            background: #2a2a2a;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+        }
+        
+        body.light-theme .gap-analysis {
+            background: #e0e0e0;
+        }
+        
+        .gap-positive {
+            color: #00ff00;
+        }
+        
+        .gap-negative {
+            color: #ff4444;
+        }
+        
+        .data-section {
+            margin: 15px 0;
+            padding: 10px;
+            background: #2a2a2a;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        body.light-theme .data-section {
+            background: #e0e0e0;
+        }
+        
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            padding: 3px 0;
+            border-bottom: 1px solid #333;
+        }
+        
+        body.light-theme .data-row {
+            border-bottom-color: #ccc;
+        }
+        
+        .level-label {
+            font-size: 12px;
+        }
+        
+        .level-value {
+            font-weight: bold;
+        }
+        
+        .alerts-section {
+            background: #2a2a2a;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+        }
+        
+        body.light-theme .alerts-section {
+            background: #e0e0e0;
+        }
+        
+        .alert {
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        
+        .alert-caution {
+            background: #ff4444;
+            color: white;
+        }
+        
+        .alert-warning {
+            background: #ffaa00;
+            color: black;
+        }
+        
+        .manual-levels {
+            background: #2a2a2a;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            transition: all 0.3s ease;
+        }
+        
+        body.light-theme .manual-levels {
+            background: #e0e0e0;
+        }
+        
+        .manual-input {
+            width: 100%;
+            padding: 5px;
+            margin: 5px 0;
+            background: #1a1a1a;
+            border: 1px solid #555;
+            color: #ffffff;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+        
+        body.light-theme .manual-input {
+            background: #ffffff;
+            border-color: #ccc;
+            color: #000000;
+        }
+        
+        .update-btn {
+            width: 100%;
+            padding: 10px;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .update-btn:hover {
+            background: #00cc00;
+            transform: translateY(-1px);
+        }
+        
+        .market-type-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .toggle-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .toggle-btn:hover {
+            transform: translateY(-1px);
+        }
+        
+        .toggle-active {
+            background: #00ff00;
+            color: #000;
+        }
+        
+        .toggle-inactive {
+            background: #555;
+            color: #fff;
+        }
+        
+        body.light-theme .toggle-inactive {
+            background: #ccc;
+            color: #000;
+        }
+        
+        .loading-indicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            z-index: 2000;
+        }
+        
+        .loading-indicator.show {
+            display: block;
+        }
+        
+        .controls-panel {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 1000;
+        }
+        
+        .control-btn {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-1px);
+        }
+        
+        .refresh-btn {
+            background: #00ff00;
+            color: #000;
+        }
+        
+        .theme-btn {
+            background: #ffaa00;
+            color: #000;
+        }
+        
+        .fullscreen-btn {
+            background: #0088ff;
+            color: #fff;
+        }
+        
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .dashboard-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto;
+                gap: 10px;
+            }
+            
+            .chart-container {
+                height: 300px;
+                order: 2;
+            }
+            
+            .data-panel {
+                order: 1;
+                max-height: 50vh;
+            }
+            
+            .symbol-name {
+                font-size: 20px;
+            }
+            
+            .current-price {
+                font-size: 24px;
+            }
+            
+            .controls-panel {
+                position: relative;
+                top: auto;
+                right: auto;
+                margin-bottom: 10px;
+                flex-direction: row;
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .current-price {
+                font-size: 20px;
+            }
+            
+            .symbol-name {
+                font-size: 16px;
+            }
+            
+            .data-row {
+                font-size: 12px;
+            }
+        }
+        
+        /* Animations */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .updating {
+            animation: pulse 1s infinite;
+        }
+        
+        /* Print Styles */
+        @media print {
+            .controls-panel {
+                display: none;
+            }
+            
+            body {
+                background: white;
+                color: black;
+            }
+            
+            .chart-container,
+            .data-panel {
+                border: 1px solid #000;
+                background: white;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Indicator -->
+    <div class="loading-indicator" id="loadingIndicator">
+        <div>📡 Loading analysis data...</div>
+    </div>
+    
+    <!-- Controls Panel -->
+    <div class="controls-panel">
+        <button class="control-btn refresh-btn" id="refreshBtn" title="Refresh Data">🔄</button>
+        <button class="control-btn theme-btn" id="themeBtn" title="Toggle Theme">🌓</button>
+        <button class="control-btn fullscreen-btn" id="fullscreenBtn" title="Toggle Fullscreen">⛶</button>
+    </div>
+    
+    <div class="dashboard-container">
+        <!-- Chart Container -->
+        <div class="chart-container">
+            <div class="symbol-header">
+                <div class="status-indicators">
+                    <span class="connection-status" id="connectionStatus">🟢 Connected</span>
+                    <span id="lastRefreshTime">Loading...</span>
+                </div>
+                <div class="symbol-name" id="symbolName">Loading...</div>
+                <div class="current-price" id="currentPrice">$0.00</div>
+                <div class="market-type-toggle">
+                    <button class="toggle-btn toggle-active" onclick="setMarketType('stocks')">STOCKS</button>
+                    <button class="toggle-btn toggle-inactive" onclick="setMarketType('crypto')">CRYPTO</button>
+                </div>
+            </div>
+            <canvas id="tradingChart" width="800" height="600"></canvas>
+        </div>
+
+        <!-- Data Panel -->
+        <div class="data-panel">
+            <!-- Gap Analysis -->
+            <div class="gap-analysis">
+                <h3>📊 GAP ANALYSIS</h3>
+                <div class="data-row">
+                    <span>Previous Close:</span>
+                    <span id="prevClose">--</span>
+                </div>
+                <div class="data-row">
+                    <span>Current Price:</span>
+                    <span id="gapCurrentPrice">--</span>
+                </div>
+                <div class="data-row">
+                    <span>Gap Size:</span>
+                    <span id="gapSize" class="gap-positive">--</span>
+                </div>
+                <div class="data-row">
+                    <span>Gap Type:</span>
+                    <span id="gapType">--</span>
+                </div>
+            </div>
+
+            <!-- Previous Day Data -->
+            <div class="data-section" id="previousDay">
+                <h3>📈 PREVIOUS DAY</h3>
+                <div class="data-row">
+                    <span class="level-label">High:</span>
+                    <span class="level-value" id="prevHigh">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="level-label">Low:</span>
+                    <span class="level-value" id="prevLow">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="level-label">Close:</span>
+                    <span class="level-value" id="prevCloseValue">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="level-label">Change:</span>
+                    <span class="level-value" id="prevChange">--</span>
+                </div>
+            </div>
+
+            <!-- Current Day Data -->
+            <div class="data-section" id="currentDay">
+                <h3>🔥 CURRENT DAY</h3>
+                <div class="data-row">
+                    <span class="level-label">High:</span>
+                    <span class="level-value" id="dayHigh">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="level-label">Low:</span>
+                    <span class="level-value" id="dayLow">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="level-label">Change:</span>
+                    <span class="level-value" id="dayChange">--</span>
+                </div>
+            </div>
+
+            <!-- EMAs -->
+            <div class="data-section" id="emas">
+                <h3>📊 EMAs 1H</h3>
+                <div class="data-row">
+                    <span class="level-label">EMA20:</span>
+                    <span class="level-value" id="ema20">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="level-label">EMA50:</span>
+                    <span class="level-value" id="ema50">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="level-label">EMA200:</span>
+                    <span class="level-value" id="ema200">--</span>
+                </div>
+            </div>
+
+            <!-- Bollinger Bands -->
+            <div class="data-section" id="bollinger">
+                <h3>📈 BOLLINGER BANDS</h3>
+                <div class="data-row">
+                    <span class="level-label">BBT 1H:</span>
+                    <span class="level-value" id="bbt1h">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="level-label">BBB 1H:</span>
+                    <span class="level-value" id="bbb1h">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="level-label">BBT Close:</span>
+                    <span class="level-value" id="bbtClose">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="level-label">BBB Close:</span>
+                    <span class="level-value" id="bbbClose">--</span>
+                </div>
+            </div>
+
+            <!-- Trading Signals -->
+            <div class="data-section" id="tradingSignals">
+                <h3>📈 TRADING SIGNALS</h3>
+                <div class="data-row">
+                    <span class="level-label">Direction:</span>
+                    <span class="level-value" id="signalDirection">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="level-label">Confidence:</span>
+                    <span class="level-value" id="signalConfidence">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="level-label">Entry:</span>
+                    <span class="level-value" id="signalEntry">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="level-label">Stop Loss:</span>
+                    <span class="level-value" id="signalStopLoss">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="level-label">Take Profit:</span>
+                    <span class="level-value" id="signalTakeProfit">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="level-label">R/R Ratio:</span>
+                    <span class="level-value" id="signalRiskReward">--</span>
+                </div>
+            </div>
+
+            <!-- Manual Levels Input -->
+            <div class="manual-levels">
+                <h3>⚙️ MANUAL LEVELS</h3>
+                <input type="number" class="manual-input" id="breakPoint" placeholder="Break Point" step="0.01">
+                <input type="number" class="manual-input" id="maxPosExp" placeholder="Max Pos Exp" step="0.01">
+                <input type="number" class="manual-input" id="intPosExp" placeholder="Int Pos Exp" step="0.01">
+                <input type="number" class="manual-input" id="intNegExp" placeholder="Int Neg Exp" step="0.01">
+                <input type="number" class="manual-input" id="maxNegExp" placeholder="Max Neg Exp" step="0.01">
+                <button class="update-btn" onclick="updateManualLevels()">UPDATE LEVELS</button>
+            </div>
+
+            <!-- Alerts -->
+            <div class="alerts-section" id="alertsSection">
+                <h3>🚨 ALERTS</h3>
+                <div class="alert alert-warning">📡 Loading alerts...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Market type switching function
+        function setMarketType(type) {
+            if (window.tradingDashboard) {
+                window.tradingDashboard.currentMarketType = type;
+                
+                // Update toggle buttons
+                const buttons = document.querySelectorAll('.toggle-btn');
+                buttons.forEach(btn => {
+                    btn.className = 'toggle-btn toggle-inactive';
+                });
+                event.target.className = 'toggle-btn toggle-active';
+                
+                console.log(`📊 Market type switched to: ${type}`);
+            }
+        }
+        
+        // Theme toggle function
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+            const isLight = document.body.classList.contains('light-theme');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            console.log(`🌓 Theme switched to: ${isLight ? 'light' : 'dark'}`);
+        }
+        
+        // Fullscreen toggle function
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        
+        // Load saved theme
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-theme');
+            }
+            
+            // Set up control button event listeners
+            document.getElementById('themeBtn').addEventListener('click', toggleTheme);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+        });
+        
+        // Global error handler
+        window.addEventListener('error', (event) => {
+            console.error('🚨 Global error:', event.error);
+        });
+        
+        // Update manual levels function (will be overridden by app.js)
+        function updateManualLevels() {
+            console.log('⚠️ Manual levels function not yet loaded');
+        }
+    </script>
+    
+    <!-- Load the dynamic dashboard app -->
+    <script src="./assets/app.js"></script>
+</body>
+</html>

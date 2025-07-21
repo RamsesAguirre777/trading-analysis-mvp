@@ -1,0 +1,388 @@
+{
+  "meta": {
+    "instanceId": "trading-analysis-mvp"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "analyze",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.polygon.io/v2/aggs/ticker/{{ $json.symbol || 'NVDA' }}/prev",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $credentials.polygonApi.apikey }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "api-previous-day",
+      "name": "API Previous Day Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300],
+      "credentials": {
+        "polygonApi": {
+          "id": "polygon-credentials",
+          "name": "Polygon API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.polygon.io/v2/last/trade/{{ $('Webhook Trigger').item.json.symbol || 'NVDA' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization", 
+              "value": "Bearer {{ $credentials.polygonApi.apikey }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "api-current-price",
+      "name": "API Current Price",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 480],
+      "credentials": {
+        "polygonApi": {
+          "id": "polygon-credentials",
+          "name": "Polygon API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.polygon.io/v2/aggs/ticker/{{ $('Webhook Trigger').item.json.symbol || 'NVDA' }}/range/1/hour/{{ new Date(Date.now() - 7*24*60*60*1000).toISOString().split('T')[0] }}/{{ new Date().toISOString().split('T')[0] }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $credentials.polygonApi.apikey }}"
+            }
+          ]
+        }
+      },
+      "id": "api-hourly-data",
+      "name": "API Hourly Data (EMAs)",
+      "type": "n8n-nodes-base.httpRequest", 
+      "typeVersion": 4.1,
+      "position": [460, 660],
+      "credentials": {
+        "polygonApi": {
+          "id": "polygon-credentials",
+          "name": "Polygon API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Data Transformation - API to Trading Calculator Format\nconst webhookData = $('Webhook Trigger').item.json;\nconst previousDayData = $('API Previous Day Data').item.json;\nconst currentPriceData = $('API Current Price').item.json;\nconst hourlyData = $('API Hourly Data').item.json;\n\n// Helper function to calculate EMA\nfunction calculateEMA(prices, period) {\n  const multiplier = 2 / (period + 1);\n  let ema = prices[0];\n  \n  for (let i = 1; i < prices.length; i++) {\n    ema = (prices[i] * multiplier) + (ema * (1 - multiplier));\n  }\n  \n  return ema;\n}\n\n// Helper function to calculate Bollinger Bands\nfunction calculateBollingerBands(prices, period = 20, stdDev = 2) {\n  const sma = prices.slice(-period).reduce((a, b) => a + b, 0) / period;\n  const variance = prices.slice(-period).reduce((acc, price) => acc + Math.pow(price - sma, 2), 0) / period;\n  const std = Math.sqrt(variance);\n  \n  return {\n    upper: sma + (std * stdDev),\n    lower: sma - (std * stdDev),\n    middle: sma\n  };\n}\n\n// Extract data from API responses\nconst symbol = webhookData.symbol || 'NVDA';\nconst previousDay = previousDayData.results?.[0] || {};\nconst currentPrice = currentPriceData.results?.price || currentPriceData.last?.price || 0;\nconst hourlyPrices = hourlyData.results?.map(bar => bar.c) || [];\n\n// Get current day high/low from recent hourly data\nconst todayBars = hourlyData.results?.filter(bar => {\n  const barDate = new Date(bar.t).toDateString();\n  const today = new Date().toDateString();\n  return barDate === today;\n}) || [];\n\nconst dayHigh = Math.max(...todayBars.map(bar => bar.h));\nconst dayLow = Math.min(...todayBars.map(bar => bar.l));\n\n// Calculate EMAs\nconst ema20 = hourlyPrices.length >= 20 ? calculateEMA(hourlyPrices.slice(-50), 20) : 0;\nconst ema50 = hourlyPrices.length >= 50 ? calculateEMA(hourlyPrices.slice(-100), 50) : 0;\nconst ema200 = hourlyPrices.length >= 200 ? calculateEMA(hourlyPrices, 200) : 0;\n\n// Calculate Bollinger Bands for current and previous session\nconst currentBB = hourlyPrices.length >= 20 ? calculateBollingerBands(hourlyPrices.slice(-20)) : { upper: 0, lower: 0 };\nconst previousBB = hourlyPrices.length >= 40 ? calculateBollingerBands(hourlyPrices.slice(-40, -20)) : { upper: 0, lower: 0 };\n\n// Get manual break points from webhook (if provided)\nconst manualBreakPoints = webhookData.manual_break_points || {\n  \"break_point\": null,\n  \"max_pos_exp\": null,\n  \"int_pos_exp\": null,\n  \"int_neg_exp\": null,\n  \"max_neg_exp\": null\n};\n\n// Format data for trading calculator\nconst tradingData = {\n  \"symbol\": symbol,\n  \"previous_day\": {\n    \"high\": previousDay.h || 0,\n    \"low\": previousDay.l || 0,\n    \"close\": previousDay.c || 0,\n    \"change\": (previousDay.c - previousDay.o) || 0\n  },\n  \"current_day\": {\n    \"high\": dayHigh || currentPrice * 1.01,\n    \"low\": dayLow || currentPrice * 0.99,\n    \"current_price\": currentPrice,\n    \"change\": (currentPrice - previousDay.c) || 0\n  },\n  \"manual_break_points\": manualBreakPoints,\n  \"bollinger_bands\": {\n    \"premarket_bbt_1h\": currentBB.upper,\n    \"premarket_bbb_1h\": currentBB.lower,\n    \"market_close_bbt_1h\": previousBB.upper,\n    \"market_close_bbb_1h\": previousBB.lower\n  },\n  \"emas_1h\": {\n    \"ema20\": ema20,\n    \"ema50\": ema50,\n    \"ema200\": ema200\n  }\n};\n\nreturn [{ json: tradingData }];"
+      },
+      "id": "data-transform",
+      "name": "Data Transform",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "command": "python",
+        "arguments": "src/trading_calculator.py --input -",
+        "workingDirectory": "/path/to/trading-analysis-mvp",
+        "sendInputData": true
+      },
+      "id": "execute-calculator",
+      "name": "Execute Trading Calculator",
+      "type": "n8n-nodes-base.executeCommand", 
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Trading Calculator Output\nconst executionData = $('Execute Trading Calculator').item.json;\nconst stdout = executionData.stdout;\nconst stderr = executionData.stderr;\n\n// Check for errors\nif (stderr && stderr.trim() !== '') {\n  throw new Error(`Trading Calculator Error: ${stderr}`);\n}\n\n// Parse JSON output\nlet analysisResult;\ntry {\n  analysisResult = JSON.parse(stdout);\n} catch (error) {\n  throw new Error(`Failed to parse calculator output: ${error.message}`);\n}\n\n// Validate required fields\nif (!analysisResult.trading_signals) {\n  throw new Error('Invalid calculator output: missing trading_signals');\n}\n\nreturn [{ json: analysisResult }];"
+      },
+      "id": "parse-result",
+      "name": "Parse Calculator Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "fileName": "latest_analysis.json",
+        "options": {
+          "encoding": "utf8"
+        }
+      },
+      "id": "save-dashboard-data",
+      "name": "Save Dashboard Data",
+      "type": "n8n-nodes-base.writeToFile",
+      "typeVersion": 1,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format Telegram Alert Message\nconst analysis = $('Parse Calculator Result').item.json;\n\nconst directionEmoji = analysis.trading_signals.primary_direction === 'LONG' ? '📈' : '📉';\nconst confidencePercent = (analysis.trading_signals.confidence * 100).toFixed(1);\nconst gapDirection = analysis.gap_analysis.gap_direction === 'up' ? '⬆️' : '⬇️';\n\nconst message = `🎯 TRADING SIGNAL: ${analysis.symbol}\n\n${directionEmoji} Direction: ${analysis.trading_signals.primary_direction}\n📊 Confidence: ${confidencePercent}%\n💰 Entry: ${analysis.trading_signals.entry_levels.join(', ')}\n🛑 Stop Loss: ${analysis.trading_signals.stop_loss}\n🎯 Take Profit: ${analysis.trading_signals.take_profit.join(', ')}\n📋 Risk/Reward: ${analysis.trading_signals.risk_reward}:1\n\n📊 ANALYSIS:\n${gapDirection} Gap: ${analysis.gap_analysis.gap_direction} ${analysis.gap_analysis.gap_size} (${analysis.gap_analysis.gap_percentage}%)\n📈 Trend: ${analysis.trend_analysis.short_term} (${(analysis.trend_analysis.trend_strength * 100).toFixed(0)}%)\n⚠️ Alerts: ${analysis.alerts.correction_level} correction expected\n🎯 Target: ${analysis.directional_targets.first_target_prediction}\n\n⏰ ${new Date().toLocaleString()}`;\n\nreturn [{ json: { message } }];"
+      },
+      "id": "format-telegram",
+      "name": "Format Telegram Message", 
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 400]
+    },
+    {
+      "parameters": {
+        "chatId": "{{ $credentials.telegramBot.chatId }}",
+        "text": "={{ $json.message }}"
+      },
+      "id": "send-telegram",
+      "name": "Send Telegram Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [1560, 400],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-credentials",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $('Parse Calculator Result').item.json }}"
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1560, 200]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "value": "25 9 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger (9:25 AM EST)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [240, 540]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Default symbols for scheduled execution\nconst defaultSymbols = ['NVDA', 'TSLA', 'AAPL', 'MSFT', 'GOOGL'];\n\nreturn defaultSymbols.map(symbol => ({ \n  json: { \n    symbol: symbol,\n    scheduled: true,\n    manual_break_points: {\n      \"break_point\": null,\n      \"max_pos_exp\": null,\n      \"int_pos_exp\": null,\n      \"int_neg_exp\": null,\n      \"max_neg_exp\": null\n    }\n  } \n}));"
+      },
+      "id": "prepare-symbols",
+      "name": "Prepare Default Symbols",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 540]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "API Previous Day Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "API Current Price", 
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "API Hourly Data (EMAs)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Previous Day Data": {
+      "main": [
+        [
+          {
+            "node": "Data Transform",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Current Price": {
+      "main": [
+        [
+          {
+            "node": "Data Transform",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Hourly Data (EMAs)": {
+      "main": [
+        [
+          {
+            "node": "Data Transform",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Transform": {
+      "main": [
+        [
+          {
+            "node": "Execute Trading Calculator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Trading Calculator": {
+      "main": [
+        [
+          {
+            "node": "Parse Calculator Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Calculator Result": {
+      "main": [
+        [
+          {
+            "node": "Save Dashboard Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Format Telegram Message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Telegram Message": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger (9:25 AM EST)": {
+      "main": [
+        [
+          {
+            "node": "Prepare Default Symbols",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Default Symbols": {
+      "main": [
+        [
+          {
+            "node": "API Previous Day Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "API Current Price",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "API Hourly Data (EMAs)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-07-21T01:00:00.000Z",
+      "updatedAt": "2025-07-21T01:00:00.000Z",
+      "id": "trading-analysis",
+      "name": "Trading Analysis"
+    }
+  ],
+  "triggerCount": 2,
+  "updatedAt": "2025-07-21T01:00:00.000Z",
+  "versionId": "1"
+}

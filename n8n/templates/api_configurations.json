@@ -1,0 +1,56 @@
+{
+  "polygon_api": {
+    "name": "Polygon API Configuration",
+    "base_url": "https://api.polygon.io",
+    "endpoints": {
+      "previous_day": "/v2/aggs/ticker/{symbol}/prev",
+      "real_time": "/v2/last/trade/{symbol}",
+      "hourly_bars": "/v2/aggs/ticker/{symbol}/range/1/hour/{from}/{to}",
+      "daily_bars": "/v2/aggs/ticker/{symbol}/range/1/day/{from}/{to}"
+    },
+    "authentication": {
+      "type": "header",
+      "header_name": "Authorization",
+      "header_value": "Bearer {api_key}"
+    },
+    "rate_limits": {
+      "requests_per_minute": 5,
+      "requests_per_day": 1000
+    },
+    "required_credentials": {
+      "api_key": "Your Polygon.io API key"
+    }
+  },
+  "alpaca_api": {
+    "name": "Alpaca API Configuration (Alternative)",
+    "base_url": "https://data.alpaca.markets",
+    "endpoints": {
+      "bars": "/v2/stocks/{symbol}/bars",
+      "latest_trade": "/v2/stocks/{symbol}/trades/latest",
+      "snapshot": "/v2/stocks/{symbol}/snapshot"
+    },
+    "authentication": {
+      "type": "header",
+      "headers": {
+        "APCA-API-KEY-ID": "{api_key}",
+        "APCA-API-SECRET-KEY": "{secret_key}"
+      }
+    },
+    "required_credentials": {
+      "api_key": "Your Alpaca API Key ID",
+      "secret_key": "Your Alpaca Secret Key"
+    }
+  },
+  "yahoo_finance": {
+    "name": "Yahoo Finance API (Backup - Free)",
+    "base_url": "https://query1.finance.yahoo.com",
+    "endpoints": {
+      "chart": "/v8/finance/chart/{symbol}",
+      "quote": "/v7/finance/quote?symbols={symbol}"
+    },
+    "authentication": {
+      "type": "none"
+    },
+    "limitations": "Free but less reliable, may have rate limits"
+  }
+}

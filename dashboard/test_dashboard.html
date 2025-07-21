@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-pass {
+            border-color: #4CAF50;
+            background: #f1f8e9;
+        }
+        .test-fail {
+            border-color: #f44336;
+            background: #ffebee;
+        }
+        .test-warning {
+            border-color: #ff9800;
+            background: #fff3e0;
+        }
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+        .code {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        .iframe-container {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Trading Dashboard Test Suite</h1>
+        <p>This page tests the dynamic dashboard functionality.</p>
+        
+        <div class="test-section">
+            <h2>📋 Pre-Test Checklist</h2>
+            <div id="checklist">
+                <label><input type="checkbox" id="serverRunning"> Dashboard server is running (python serve_dashboard.py)</label><br>
+                <label><input type="checkbox" id="filesExist"> Required files exist (index.html, app.js, latest_analysis.json)</label><br>
+                <label><input type="checkbox" id="browserReady"> Browser supports modern JavaScript (fetch, async/await)</label><br>
+            </div>
+            <button onclick="runPreChecks()">🔍 Run Pre-Checks</button>
+            <div id="precheckResults" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📡 Data Loading Test</h2>
+            <p>Test if the dashboard can load analysis data from latest_analysis.json</p>
+            <button onclick="testDataLoading()">🧪 Test Data Loading</button>
+            <div id="dataResults" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 Chart Integration Test</h2>
+            <p>Test if Chart.js loads and integrates properly</p>
+            <button onclick="testChartIntegration()">📈 Test Chart</button>
+            <div id="chartResults" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔄 Auto-Refresh Test</h2>
+            <p>Test the auto-refresh mechanism</p>
+            <button onclick="testAutoRefresh()">⏰ Test Auto-Refresh</button>
+            <button onclick="stopAutoRefreshTest()">⏹️ Stop Test</button>
+            <div id="refreshResults" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📱 Responsive Design Test</h2>
+            <p>Test mobile responsiveness and theme switching</p>
+            <button onclick="testResponsive()">📱 Test Responsive</button>
+            <div id="responsiveResults" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🖥️ Dashboard Preview</h2>
+            <p>Live preview of the dashboard (if server is running)</p>
+            <button onclick="loadDashboardPreview()">👁️ Load Preview</button>
+            <div id="previewContainer"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔧 Manual Tests</h2>
+            <p>These tests require manual verification:</p>
+            <ul>
+                <li>✅ Dashboard loads without errors</li>
+                <li>✅ Data updates when latest_analysis.json changes</li>
+                <li>✅ Chart displays price levels correctly</li>
+                <li>✅ Manual levels input works</li>
+                <li>✅ Theme toggle functions</li>
+                <li>✅ Mobile layout is responsive</li>
+                <li>✅ Auto-refresh works every 30 seconds</li>
+                <li>✅ Offline mode shows fallback data</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h2>📝 Test Commands</h2>
+            <div class="code">
+# Start dashboard server
+cd dashboard/
+python serve_dashboard.py
+
+# Test data loading (separate terminal)
+curl http://localhost:8080/data/latest_analysis.json
+
+# Update analysis data (simulate n8n workflow)
+curl -X POST http://localhost:5678/webhook/trading \
+  -H "Content-Type: application/json" \
+  -d '{"symbol": "TSLA"}'
+
+# Verify dashboard updates
+# Browser should auto-refresh and show new data
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let autoRefreshTestInterval = null;
+        
+        async function runPreChecks() {
+            const results = document.getElementById('precheckResults');
+            results.innerHTML = '🔍 Running pre-checks...';
+            
+            const checks = [];
+            
+            // Test server availability
+            try {
+                const response = await fetch('http://localhost:8080/index.html', { method: 'HEAD' });
+                checks.push(response.ok ? '✅ Server is running' : '❌ Server not responding');
+            } catch (e) {
+                checks.push('❌ Server not running - start with: python serve_dashboard.py');
+            }
+            
+            // Test file availability
+            try {
+                const dataResponse = await fetch('http://localhost:8080/data/latest_analysis.json');
+                checks.push(dataResponse.ok ? '✅ Data file exists' : '❌ Data file missing');
+            } catch (e) {
+                checks.push('❌ Cannot access data file');
+            }
+            
+            // Test browser features
+            const hasModernJS = (typeof fetch !== 'undefined' && typeof Promise !== 'undefined');
+            checks.push(hasModernJS ? '✅ Browser supports modern JS' : '❌ Browser too old');
+            
+            const allPassed = checks.every(check => check.startsWith('✅'));
+            results.className = `result ${allPassed ? 'test-pass' : 'test-fail'}`;
+            results.innerHTML = checks.join('<br>');
+        }
+        
+        async function testDataLoading() {
+            const results = document.getElementById('dataResults');
+            results.innerHTML = '📡 Testing data loading...';
+            
+            try {
+                const response = await fetch('http://localhost:8080/data/latest_analysis.json');
+                const data = await response.json();
+                
+                const requiredFields = ['symbol', 'trading_signals', 'gap_analysis'];
+                const missingFields = requiredFields.filter(field => !(field in data));
+                
+                if (missingFields.length === 0) {
+                    results.className = 'result test-pass';
+                    results.innerHTML = `✅ Data loaded successfully<br>Symbol: ${data.symbol}<br>Signal: ${data.trading_signals?.primary_direction}<br>Timestamp: ${data.analysis_timestamp}`;
+                } else {
+                    results.className = 'result test-fail';
+                    results.innerHTML = `❌ Data incomplete. Missing: ${missingFields.join(', ')}`;
+                }
+            } catch (error) {
+                results.className = 'result test-fail';
+                results.innerHTML = `❌ Failed to load data: ${error.message}`;
+            }
+        }
+        
+        function testChartIntegration() {
+            const results = document.getElementById('chartResults');
+            
+            if (typeof Chart !== 'undefined') {
+                results.className = 'result test-pass';
+                results.innerHTML = '✅ Chart.js is loaded and available';
+            } else {
+                results.className = 'result test-fail';
+                results.innerHTML = '❌ Chart.js not loaded - check CDN connection';
+            }
+        }
+        
+        function testAutoRefresh() {
+            const results = document.getElementById('refreshResults');
+            let refreshCount = 0;
+            
+            results.innerHTML = '⏰ Testing auto-refresh (will run for 10 cycles)...';
+            results.className = 'result test-warning';
+            
+            autoRefreshTestInterval = setInterval(async () => {
+                refreshCount++;
+                
+                try {
+                    const response = await fetch('http://localhost:8080/data/latest_analysis.json', {
+                        cache: 'no-cache'
+                    });
+                    const data = await response.json();
+                    
+                    results.innerHTML = `🔄 Refresh ${refreshCount}/10 - Last update: ${new Date().toLocaleTimeString()}<br>Symbol: ${data.symbol}`;
+                    
+                    if (refreshCount >= 10) {
+                        clearInterval(autoRefreshTestInterval);
+                        results.className = 'result test-pass';
+                        results.innerHTML += '<br>✅ Auto-refresh test completed successfully';
+                    }
+                } catch (error) {
+                    clearInterval(autoRefreshTestInterval);
+                    results.className = 'result test-fail';
+                    results.innerHTML = `❌ Auto-refresh failed: ${error.message}`;
+                }
+            }, 2000); // Every 2 seconds for testing
+        }
+        
+        function stopAutoRefreshTest() {
+            if (autoRefreshTestInterval) {
+                clearInterval(autoRefreshTestInterval);
+                autoRefreshTestInterval = null;
+                
+                const results = document.getElementById('refreshResults');
+                results.className = 'result test-warning';
+                results.innerHTML = '⏹️ Auto-refresh test stopped manually';
+            }
+        }
+        
+        function testResponsive() {
+            const results = document.getElementById('responsiveResults');
+            
+            // Test viewport meta tag
+            const viewport = document.querySelector('meta[name="viewport"]');
+            const hasViewport = viewport && viewport.content.includes('width=device-width');
+            
+            // Test CSS media queries (basic check)
+            const hasMediaQueries = Array.from(document.styleSheets)
+                .some(sheet => {
+                    try {
+                        return Array.from(sheet.cssRules || [])
+                            .some(rule => rule.type === CSSRule.MEDIA_RULE);
+                    } catch (e) {
+                        return false;
+                    }
+                });
+            
+            const checks = [
+                hasViewport ? '✅ Viewport meta tag present' : '❌ Missing viewport meta tag',
+                hasMediaQueries ? '✅ CSS media queries detected' : '❌ No media queries found',
+                '✅ Manual test: Resize browser window to test responsiveness'
+            ];
+            
+            const allPassed = checks.filter(c => c.startsWith('✅')).length >= 2;
+            results.className = `result ${allPassed ? 'test-pass' : 'test-warning'}`;
+            results.innerHTML = checks.join('<br>');
+        }
+        
+        function loadDashboardPreview() {
+            const container = document.getElementById('previewContainer');
+            
+            container.innerHTML = `
+                <iframe 
+                    src="http://localhost:8080/index.html" 
+                    class="iframe-container"
+                    onload="this.style.borderColor='#4CAF50'"
+                    onerror="this.style.borderColor='#f44336'"
+                >
+                    Dashboard preview not available - server may not be running
+                </iframe>
+                <p><small>If the preview doesn't load, make sure the dashboard server is running on port 8080</small></p>
+            `;
+        }
+        
+        // Auto-run initial checks when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(runPreChecks, 1000);
+        });
+    </script>
+</body>
+</html>

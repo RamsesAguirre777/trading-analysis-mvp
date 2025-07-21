@@ -1,0 +1,123 @@
+{
+  "test_scenarios": {
+    "manual_webhook_test": {
+      "name": "Manual Webhook Test",
+      "description": "Test the complete pipeline with manual webhook trigger",
+      "method": "POST",
+      "url": "http://localhost:5678/webhook/trading",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "symbol": "NVDA",
+        "test_mode": true,
+        "manual_break_points": {
+          "break_point": 171.67,
+          "max_pos_exp": 174.04,
+          "int_pos_exp": 172.85,
+          "int_neg_exp": 170.48,
+          "max_neg_exp": 169.29
+        }
+      },
+      "expected_results": [
+        "Webhook receives data",
+        "API calls complete successfully",
+        "Trading calculator executes",
+        "Dashboard data is saved",
+        "Telegram alert is sent",
+        "Webhook response is returned"
+      ]
+    },
+    "scheduled_trigger_test": {
+      "name": "Scheduled Trigger Test",
+      "description": "Test the automated scheduling functionality",
+      "trigger": "cron",
+      "schedule": "*/5 * * * *",
+      "test_symbols": ["NVDA", "TSLA", "AAPL"],
+      "expected_results": [
+        "Triggers at scheduled time",
+        "Processes multiple symbols",
+        "Generates analysis for each",
+        "Sends batch notifications"
+      ]
+    },
+    "api_failure_test": {
+      "name": "API Failure Simulation",
+      "description": "Test error handling when APIs fail",
+      "simulation": {
+        "polygon_api_down": true,
+        "alpaca_api_down": false
+      },
+      "expected_behavior": [
+        "Detect API failure",
+        "Attempt retry with backoff",
+        "Fall back to alternative API",
+        "Use cached data if all APIs fail",
+        "Send error notification",
+        "Continue with degraded analysis"
+      ]
+    },
+    "calculator_error_test": {
+      "name": "Calculator Error Test",
+      "description": "Test handling of trading calculator errors",
+      "test_data": {
+        "symbol": "INVALID",
+        "malformed_data": true
+      },
+      "expected_behavior": [
+        "Detect calculator error",
+        "Parse error message",
+        "Generate fallback analysis",
+        "Log error details",
+        "Send admin notification"
+      ]
+    },
+    "telegram_failure_test": {
+      "name": "Telegram Delivery Failure",
+      "description": "Test handling when Telegram bot fails",
+      "simulation": {
+        "telegram_bot_token": "invalid_token"
+      },
+      "expected_behavior": [
+        "Detect Telegram failure",
+        "Retry message send",
+        "Fall back to simplified message",
+        "Log delivery failure",
+        "Continue workflow execution"
+      ]
+    }
+  },
+  "test_commands": {
+    "curl_webhook_test": "curl -X POST http://localhost:5678/webhook/trading -H 'Content-Type: application/json' -d '{\"symbol\": \"NVDA\", \"test_mode\": true}'",
+    "verify_dashboard_update": "cat ./dashboard/data/latest_analysis.json | jq '.symbol'",
+    "check_calculator_direct": "python src/trading_calculator.py --input data/nvda_test_data.json --pretty",
+    "test_n8n_health": "curl -X GET http://localhost:5678/healthz"
+  },
+  "monitoring_checks": {
+    "files_created": [
+      "./dashboard/data/latest_analysis.json",
+      "/tmp/trading_input.json",
+      "/tmp/trading_output.json"
+    ],
+    "api_endpoints": [
+      "https://api.polygon.io/v2/aggs/ticker/NVDA/prev",
+      "https://data.alpaca.markets/v2/stocks/NVDA/snapshot"
+    ],
+    "telegram_api": "https://api.telegram.org/bot<TOKEN>/getMe",
+    "n8n_webhook": "http://localhost:5678/webhook/trading"
+  },
+  "performance_benchmarks": {
+    "total_execution_time": "< 30 seconds",
+    "api_response_time": "< 5 seconds",
+    "calculator_execution": "< 3 seconds",
+    "telegram_delivery": "< 2 seconds",
+    "dashboard_update": "< 1 second"
+  },
+  "success_criteria": {
+    "webhook_response": "HTTP 200 with analysis JSON",
+    "dashboard_updated": "latest_analysis.json contains current timestamp",
+    "telegram_sent": "Message delivered to configured chat",
+    "no_errors": "N8N execution log shows no errors",
+    "data_accuracy": "Analysis results match expected format"
+  }
+}

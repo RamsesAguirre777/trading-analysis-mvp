@@ -1,0 +1,55 @@
+# API Keys and Sensitive Data
+.env
+*.env
+api_keys.txt
+credentials.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# Node.js (if used)
+node_modules/
+npm-debug.log*
+.npm
+
+# N8N Data
+.n8n/
+n8n-data/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# OS specific
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Dashboard temporary data
+dashboard/data/temp_*.json
+
+# Backup files
+*.backup
+*.bak
+
+# Test outputs
+test_results/
+coverage/
